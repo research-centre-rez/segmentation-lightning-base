@@ -20,45 +20,36 @@ jupyter:
 ```python
 from pathlib import Path
 
-data_path = Path('segmentation_delisa')
-model_dir = 'training/delisa_seglight'
+data_path = Path('data')
+model_dir = Path('model')
+```
+
+```python
+
+import zipfile
+
+from huggingface_hub import hf_hub_download
+
+d25_dirpath = hf_hub_download(
+    repo_id='research-centre-rez/segmentation_delisa',
+    filename = 'd25.zip',
+    repo_type='dataset'
+)
+
+with zipfile.ZipFile(d25_dirpath, 'r') as zip_ref:
+    zip_ref.extractall(data_path)
+
+dataset_path = data_path / 'd25'
 ```
 
 # Dataset/Dataloaders
 
 ```python
-import cv2
 import lightning as L
 import numpy as np
 import seglight.data as dt
 import torch
-from seglight.domain import Image
 
-
-def label_to_classes(label: Image) -> Image:
-    """
-    Convert a label image to a 3-channel image with classes 'foreground',
-    'background', 'border'.
-
-    Parameters
-
-    label: Image
-
-    Returns 
-    Image
-    """
-    # label must be of type float32
-    foreground = np.float32(label > 0)
-    background = 1 - foreground
-    border = _get_border(foreground)
-
-    return np.dstack([foreground, background, border])
-
-def _get_border(foreground_label: Image) -> Image:
-    fg_int = np.uint8(foreground_label)
-    kernel = np.ones((3, 3))
-    eroded = cv2.morphologyEx(fg_int, cv2.MORPH_ERODE, kernel)
-    return np.float32(fg_int - eroded)
 
 class PrecipitatesSegmentationPairsLoader:
     def __init__(self,cvr_ds:dt.CVRFolderedDSFormat):
@@ -67,9 +58,6 @@ class PrecipitatesSegmentationPairsLoader:
     def _load_dir(self, paths):
         _dict = self.ds.load_dir_dict(paths)
         imgs = [v['img']for v in _dict.values()]
-
-
-        #labels = [ label_to_classes(v['label'])  for v in _dict.values()]
         labels = [ np.dstack([v['label']])  for v in _dict.values()]
         return imgs,labels
 
@@ -79,13 +67,13 @@ class PrecipitatesSegmentationPairsLoader:
         if set_type == 'train':
             return self._load_dir(train_paths)
 
-        if set_type == 'test' or set_type == 'predict':
+        if set_type in ('test', 'predict'):
             return self._load_dir(test_paths)
 
 
         raise Exception(f"Invalid {set_type=}. Use 'train' or 'test'.")
 
-cvr_ds = dt.CVRFolderedDSFormat(data_path)
+cvr_ds = dt.CVRFolderedDSFormat(dataset_path)
 nfa_ogr_data = PrecipitatesSegmentationPairsLoader(cvr_ds)
 ```
 
@@ -151,6 +139,8 @@ dm = dt.TrainTestDataModule(nfa_ogr_data,augumentations=aug, batch_size=32)
 dm.setup(None)
 ```
 
+# Sanity check
+
 ```python
 for bi,bl in dm.val_dl:
     print(bi.shape,bl.shape)
@@ -200,7 +190,11 @@ from lightning.pytorch.callbacks import ModelCheckpoint
 
 metrics_callback = tr.MetricsCallback()
 no_val_bar_progressbar_cb = tr.NoValBarProgress()
-checkpoint_callback = ModelCheckpoint(dirpath=model_dir, save_top_k=2, monitor="val_loss")
+checkpoint_callback = ModelCheckpoint(
+    dirpath=model_dir,
+    save_top_k=2,
+    monitor="val_loss"
+)
 ```
 
 # Training
@@ -227,7 +221,10 @@ def read_loss_val(tensor):
 
     return tensor.cpu().numpy()
 
-train_loss,val_loss = np.array([(read_loss_val(d.get('train_loss')),read_loss_val(d.get('val_loss'))) for d in metrics_callback.metrics]).T
+train_loss,val_loss = np.array([(
+        read_loss_val(d.get('train_loss')),read_loss_val(d.get('val_loss')))
+        for d in metrics_callback.metrics
+]).T
 plt.plot(train_loss,label = 'train')
 plt.plot(val_loss,label = 'test')
 plt.legend()
@@ -249,9 +246,8 @@ for pb in preds_batched:
 import matplotlib.pyplot as plt
 
 for p in preds:
-    _,axs = plt.subplots(1,3,figsize = (20,6))
-    for ax,img in zip(axs,p, strict=False):
-        ax.imshow(img.T)
+    img = np.squeeze(p)
+    plt.imshow(img)
     plt.show()
 
 ```
