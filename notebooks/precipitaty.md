@@ -25,13 +25,16 @@ model_dir = Path('model')
 ```
 
 ```python
+%pip install huggingface_hub
+```
+
+```python
 
 import zipfile
 
 from huggingface_hub import hf_hub_download
-
 d25_dirpath = hf_hub_download(
-    repo_id='research-centre-rez/segmentation_delisa',
+    repo_id='research-centre-rez/segmentation_delisa', 
     filename = 'd25.zip',
     repo_type='dataset'
 )
@@ -45,11 +48,12 @@ dataset_path = data_path / 'd25'
 # Dataset/Dataloaders
 
 ```python
+import cv2
 import lightning as L
 import numpy as np
 import seglight.data as dt
 import torch
-
+from seglight.domain import Image
 
 class PrecipitatesSegmentationPairsLoader:
     def __init__(self,cvr_ds:dt.CVRFolderedDSFormat):
@@ -67,7 +71,7 @@ class PrecipitatesSegmentationPairsLoader:
         if set_type == 'train':
             return self._load_dir(train_paths)
 
-        if set_type in ('test', 'predict'):
+        if set_type == 'test' or set_type == 'predict':
             return self._load_dir(test_paths)
 
 
@@ -191,8 +195,8 @@ from lightning.pytorch.callbacks import ModelCheckpoint
 metrics_callback = tr.MetricsCallback()
 no_val_bar_progressbar_cb = tr.NoValBarProgress()
 checkpoint_callback = ModelCheckpoint(
-    dirpath=model_dir,
-    save_top_k=2,
+    dirpath=model_dir, 
+    save_top_k=2, 
     monitor="val_loss"
 )
 ```
@@ -222,7 +226,7 @@ def read_loss_val(tensor):
     return tensor.cpu().numpy()
 
 train_loss,val_loss = np.array([(
-        read_loss_val(d.get('train_loss')),read_loss_val(d.get('val_loss')))
+        read_loss_val(d.get('train_loss')),read_loss_val(d.get('val_loss'))) 
         for d in metrics_callback.metrics
 ]).T
 plt.plot(train_loss,label = 'train')
