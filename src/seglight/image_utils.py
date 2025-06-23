@@ -9,7 +9,7 @@ def normalize_image(image: Image) -> Image:
     max_value = image.max()
     min_value = image.min()
     if max_value == min_value:
-        warinings.warn("Image min == Image max. Doing nothing.")
+        warnings.warn("Image min == Image max. Doing nothing.") # noqa B028
         return image
     return (image - min_value) / (max_value - min_value)
 
@@ -17,11 +17,11 @@ def normalize_image(image: Image) -> Image:
 def pad_to(x, stride):
     h, w = x.shape[-2:]
 
-    if h % stride > 0:
+    if h % stride > 0: # noqa SIM108
         new_h = h + stride - h % stride
     else:
         new_h = h
-    if w % stride > 0:
+    if w % stride > 0: # noqa SIM108
         new_w = w + stride - w % stride
     else:
         new_w = w

@@ -7,7 +7,6 @@ from torch.functional import F
 from torch.nn import BCELoss, Module
 
 import seglight.image_utils as iu
-from seglight.domain import AugTransform, Image
 
 
 class SemsegLightningModule(L.LightningModule):
@@ -82,7 +81,7 @@ class FocalLoss(Module):
         gamma=2,
         reduction="mean",
     ):
-        super(FocalLoss, self).__init__()
+        super().__init__()
         self.alpha = alpha
         self.gamma = gamma
         self.reduction = reduction
@@ -98,7 +97,7 @@ class MetricsCallback(L.Callback):
         super().__init__()
         self.metrics = []
 
-    def on_validation_epoch_end(self, trainer, pl_module):
+    def on_validation_epoch_end(self, trainer, _):
         each_me = copy.deepcopy(trainer.callback_metrics)
         self.metrics.append(each_me)
 

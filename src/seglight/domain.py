@@ -1,4 +1,4 @@
-from typing import Dict, List, Protocol, Tuple, TypeAlias
+from typing import Protocol, TypeAlias
 
 import numpy as np
 import numpy.typing as npt
@@ -6,12 +6,12 @@ import numpy.typing as npt
 ChannelFirstImage: TypeAlias = npt.NDArray[np.float32]
 Image: TypeAlias = npt.NDArray[np.float32]
 BinaryImage: TypeAlias = npt.NDArray[np.uint8]
-ImageDirDict: TypeAlias = Dict[str, Image]
+ImageDirDict: TypeAlias = dict[str, Image]
 AugOutput: TypeAlias = dict[str, Image]
 
 
 class SegmentationPairsLoaderProtocol(Protocol):
-    def load(self, set_type: str) -> Tuple[List[Image], List[Image]]:
+    def load(self, set_type: str) -> tuple[list[Image], list[Image]]:
         # accepts train test predict
         ...
 

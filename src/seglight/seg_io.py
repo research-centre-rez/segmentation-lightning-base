@@ -3,7 +3,6 @@ import os
 
 import imageio
 import numpy as np
-import numpy.typing as npt
 
 import seglight.image_utils as iu
 from seglight.domain import Image

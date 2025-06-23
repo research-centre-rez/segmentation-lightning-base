@@ -106,15 +106,18 @@ select = [
     "RUF",
 ]
 ignore = [
+    "COM812",
     "D105",
     "D107",
     "D212",
+    "ISC001",
+    "N812",
     "UP006",
     "UP007",
+    "PLR0913",
     "PLC1901",
     "PLR2004",
-    "COM812",
-    "ISC001"
+    
 ]
 unfixable = ["F841"]
 
