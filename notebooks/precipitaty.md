@@ -18,23 +18,22 @@ jupyter:
 ```
 
 ```python
-from pathlib import Path 
-from tqdm.cli import tqdm
+from pathlib import Path
 
 data_path = Path('segmentation_delisa')
+model_dir = 'training/delisa_seglight'
 ```
 
 # Dataset/Dataloaders
 
 ```python
+import cv2
 import lightning as L
 import numpy as np
-import numpy.typing as npt
-import torch
-import seglight.seg_io as sio
 import seglight.data as dt
-from seglight.domain import Image, ChannelFirstImage
-import cv2
+import torch
+from seglight.domain import Image
+
 
 def label_to_classes(label: Image) -> Image:
     """
@@ -60,7 +59,7 @@ def _get_border(foreground_label: Image) -> Image:
     kernel = np.ones((3, 3))
     eroded = cv2.morphologyEx(fg_int, cv2.MORPH_ERODE, kernel)
     return np.float32(fg_int - eroded)
-    
+
 class PrecipitatesSegmentationPairsLoader:
     def __init__(self,cvr_ds:dt.CVRFolderedDSFormat):
         self.ds = cvr_ds
@@ -69,22 +68,22 @@ class PrecipitatesSegmentationPairsLoader:
         _dict = self.ds.load_dir_dict(paths)
         imgs = [v['img']for v in _dict.values()]
 
-        
+
         #labels = [ label_to_classes(v['label'])  for v in _dict.values()]
         labels = [ np.dstack([v['label']])  for v in _dict.values()]
-        return imgs,labels    
-        
+        return imgs,labels
+
     def load(self, set_type):
         train_paths,test_paths = self.ds.read_train_test_paths()
-        
+
         if set_type == 'train':
             return self._load_dir(train_paths)
 
         if set_type == 'test' or set_type == 'predict':
             return self._load_dir(test_paths)
-            
 
-        raise Exception(f"Invalid {set_type=}. Use 'train', 'test' or 'predict'.")
+
+        raise Exception(f"Invalid {set_type=}. Use 'train' or 'test'.")
 
 cvr_ds = dt.CVRFolderedDSFormat(data_path)
 nfa_ogr_data = PrecipitatesSegmentationPairsLoader(cvr_ds)
@@ -98,6 +97,8 @@ len(tri),len(tei)
 
 ```python
 import albumentations as A
+
+
 class Augumentations:
     def __init__(
         self,
@@ -122,11 +123,11 @@ class Augumentations:
             ),
             A.Rotate(limit=self.rotate_degrees, interpolation = 2),
             A.CenterCrop(self.patch_size, self.patch_size),
-            
+
   #          A.SquareSymmetry(p = .6),
         ]
-        
-        return A.Compose(transform_list)            
+
+        return A.Compose(transform_list)
 
     @property
     def val_augumentation_fn(self):
@@ -159,13 +160,9 @@ for bi,bl in dm.val_dl:
 # Model
 
 ```python
+
 import seglight.training as tr
 from segmentation_models_pytorch import Unet
-from torch.nn import CrossEntropyLoss
-from types import SimpleNamespace
-
-from torchvision import transforms, datasets, models
-import lightning as L
 
 
 def prepare_model(
@@ -177,20 +174,20 @@ def prepare_model(
     decoder_channels = np.array([starting_decoder_channel]*encoder_depth)
     pows = list(range(encoder_depth))
     decoder_channels = decoder_channels * [2**p for p in pows]
-    
+
     return Unet(
         encoder_name="resnet50",
         in_channels=in_channels,
         classes=classes,
         activation="sigmoid",
         encoder_depth = encoder_depth,
-        decoder_channels = decoder_channels, 
+        decoder_channels = decoder_channels,
         decoder_use_batchnorm=True,
     )
-    
+
 m = prepare_model(8,3,1,classes = 1)
 loss_fn = tr.resolve_loss("dice")
-model = tr.SemsegLightningModule(m,loss_fn)    
+model = tr.SemsegLightningModule(m,loss_fn)
 ```
 
 # Callbacks
@@ -201,7 +198,6 @@ model = tr.SemsegLightningModule(m,loss_fn)
 ```python
 from lightning.pytorch.callbacks import ModelCheckpoint
 
-model_dir = 'model_dir'
 metrics_callback = tr.MetricsCallback()
 no_val_bar_progressbar_cb = tr.NoValBarProgress()
 checkpoint_callback = ModelCheckpoint(dirpath=model_dir, save_top_k=2, monitor="val_loss")
@@ -211,7 +207,7 @@ checkpoint_callback = ModelCheckpoint(dirpath=model_dir, save_top_k=2, monitor="
 
 ```python
 trainer = L.Trainer(
-    accelerator="gpu", 
+    accelerator="gpu",
     devices=1,
     max_epochs=100,
     check_val_every_n_epoch=2,
@@ -223,12 +219,14 @@ trainer.fit(model,datamodule = dm)
 
 ```python
 import matplotlib.pyplot as plt
+
+
 def read_loss_val(tensor):
     if tensor is None:
         return np.nan
 
     return tensor.cpu().numpy()
-        
+
 train_loss,val_loss = np.array([(read_loss_val(d.get('train_loss')),read_loss_val(d.get('val_loss'))) for d in metrics_callback.metrics]).T
 plt.plot(train_loss,label = 'train')
 plt.plot(val_loss,label = 'test')
@@ -249,9 +247,10 @@ for pb in preds_batched:
 
 ```python
 import matplotlib.pyplot as plt
+
 for p in preds:
     _,axs = plt.subplots(1,3,figsize = (20,6))
-    for ax,img in zip(axs,p):
+    for ax,img in zip(axs,p, strict=False):
         ax.imshow(img.T)
     plt.show()
 
