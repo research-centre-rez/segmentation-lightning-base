@@ -206,25 +206,27 @@ class TrainTestDataModule(L.LightningDataModule):
             )
 
         if stage is None or stage == "test":
-            test_imgs, test_labels = self.seg_pairs_loader.load("test")
-            test_ds = AugumentedDataset(test_imgs, test_labels)
-
-            self.test_dl = DataLoader(
-                test_ds,
-                batch_size=self.test_batch_size,
-                shuffle=False,
+            self.test_dl = self._read_data_pairs(
+                "test",
+                self.test_batch_size
             )
 
         if stage is None or stage == "predict":
-            pred_imgs, pred_labels = self.seg_pairs_loader.load("predict")
-
-            pred_ds = AugumentedDataset(pred_imgs, pred_labels)
-
-            self.pred_dl = DataLoader(
-                pred_ds,
-                batch_size=self.test_batch_size,
-                shuffle=False,
+            self.pred_dl = self._read_data_pairs(
+                "predict",
+                self.test_batch_size
             )
+
+
+    def _read_data_pairs(self, set_name,batch_size):
+        imgs, labels = self.seg_pairs_loader.load(set_name)
+        ds = AugumentedDataset(imgs, labels)
+        return DataLoader(
+            ds,
+            batch_size=batch_size,
+            shuffle=False,
+        )
+
 
     def train_dataloader(self):
         return self.train_dl
