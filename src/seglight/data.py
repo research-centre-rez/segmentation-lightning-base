@@ -14,31 +14,7 @@ from seglight.domain import (
 
 CV2_INTER_CUBIC = 2
 
-
 class CVRFolderedDSFormat:
-    """
-    A dataset loader for image samples organized into directories with
-    test/train split.
-
-    Each sample is stored in its own subdirectory within `data_path`, and
-    contains images such as `img.png`, `label.png`, `oxides.png`, etc. A
-    `test.txt` file specifies which samples should be used as test data.
-
-    Parameters
-    ----------
-    data_path : Path
-        Path to the directory containing the dataset subfolders.
-    test_txt_path : Path, optional
-        Path to a text file listing test sample names (one per line).
-        If not provided, defaults to `data_path / "test.txt"`.
-
-    Attributes
-    ----------
-    data_path : Path
-        Path to the dataset root directory.
-    test_txt_path : Path
-        Path to the test split definition file.
-    """
     def __init__(self, data_path, test_txt_path=None):
         self.data_path = data_path
         if test_txt_path is None:
@@ -46,47 +22,49 @@ class CVRFolderedDSFormat:
         else:
             self.test_txt_path = test_txt_path
 
-    def load_dir_dict(self, data_paths):
+    def load_train(self):
         """
-        Load images from multiple sample directories into a dictionary.
+        Load train images from multiple sample directories into a dictionary.
 
         Each directory should contain image files named by type, e.g. `img.png`,
         `label.png`, etc.
 
 
-
-        Parameters
-        ----------
-        data_paths : dict of str to Path
-            Dictionary mapping sample names to their corresponding directory
-            paths.
-
         Returns
         -------
-        dict of str to dict of str to ndarray
+        dict of str to dict of str to Image
             A nested dictionary where the outer key is the sample name and the
             inner dictionary maps image type (from filename stem e.g.
             `label.png` -> `label`) to the corresponding image array.
         """
+        train_paths,_ = self._read_train_test_paths()
+        return self._load_dir(train_paths)
+
+    def load_test(self):
+        """
+        Load train images from multiple sample directories into a dictionary.
+
+        Each directory should contain image files named by type, e.g. `img.png`,
+        `label.png`, etc.
+
+
+        Returns
+        -------
+        dict of str to dict of str to Image
+            A nested dictionary where the outer key is the sample name and the
+            inner dictionary maps image type (from filename stem e.g.
+            `label.png` -> `label`) to the corresponding image array.
+        """
+        _,test_paths = self._read_train_test_paths()
+        return self._load_dir(test_paths)
+
+    def _load_dir(self,data_paths):
         data = {}
         for key, dir_path in data_paths.items():
             data[key] = {p.stem: sio.imread_as_float(p) for p in dir_path.glob("*")}
         return data
 
-    def read_train_test_paths(self):
-        """
-        Split the dataset into training and testing subsets.
-
-        This method reads subdirectories in `data_path` and compares their names to
-        entries in `test_txt_path` to determine their assignment.
-
-        Returns
-        -------
-        train_paths : dict of str to Path
-            Dictionary mapping training sample names to their directory paths.
-        test_paths : dict of str to Path
-            Dictionary mapping test sample names to their directory paths.
-        """
+    def _read_train_test_paths(self):
         all_data = {p.name: p for p in self.data_path.glob("*") if p.is_dir()}
         with open(self.test_txt_path) as f:
             test_names = {line.strip() for line in f.readlines()}
