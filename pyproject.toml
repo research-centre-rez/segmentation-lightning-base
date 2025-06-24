@@ -47,14 +47,9 @@ dependencies = [
   "torch",
   "tqdm",
   "albumentations",
-  "opencv-python",
   "imageio",
   "numpy==1.26.0",
-  "pandas",
-  "scipy",
   "scikit-learn",
-  "segmentation-models-pytorch",
-  "matplotlib",
 ]
 
 # List additional groups of dependencies here (e.g. development
@@ -135,5 +130,5 @@ asyncio_mode = "auto"
 minversion = "6.0"
 addopts = "-ra -q"
 testpaths = [
-    "tests", # hopefully
+    "tests",
 ]
