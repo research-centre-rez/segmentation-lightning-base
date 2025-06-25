@@ -1,0 +1,136 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta" 
+
+
+[project]
+name = "seglight" 
+version = "1.0.0"  
+
+description = "Segmentation based on Lightning"
+
+readme = "README.md"
+
+requires-python = ">=3.10"
+
+license = {file = "LICENSE.txt"}
+
+keywords = ["segmentation","core","compouter","vision"]
+
+authors = [
+  {name = "Jaroslav Knotek", email = "jaroslav.knotek@cvrez.cz" }
+]
+
+# maintainers = [
+#   {name = "A. Great Maintainer", email = "maintainer@example.com" }
+# ]
+
+classifiers = [
+  # How mature is this project? Common values are
+  #   3 - Alpha
+  #   4 - Beta
+  #   5 - Production/Stable
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Topic :: Software Development :: Build Tools",
+  "License :: OSI Approved :: MIT License",
+
+  # Specify the Python versions you support here. In particular, ensure
+  # that you indicate you support Python 3. These classifiers are *not*
+  # checked by "pip install". See instead "requires-python" key in this file.
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3 :: Only",
+]
+
+dependencies = [
+  "torch",
+  "lightning",
+  "tqdm",
+  "albumentations",
+  "imageio",
+  "numpy==1.26.0",
+  "scikit-learn",
+]
+
+# List additional groups of dependencies here (e.g. development
+# dependencies). Users will be able to install these using the "extras"
+# syntax, for example:
+#
+#   $ pip install sampleproject[dev]
+#
+# Optional dependencies the project provides. These are commonly 
+# referred to as "extras". For a more extensive definition see:
+# https://packaging.python.org/en/latest/specifications/dependency-specifiers/#extras
+[project.optional-dependencies]
+dev = ["check-manifest","pytest","jupytext"]
+test = ["coverage"]
+
+[project.urls]
+"Homepage" = "https://github.com/research-centre-rez/segmentation-lightning-base"
+"Bug Reports" = "https://github.com/research-centre-rez/segmentation-lightning-base/issues"
+"Source" = "https://github.com/research-centre-rez/segmentation-lightning-base"
+
+[tool.ruff.lint]
+select = [
+    "F",
+    "E",
+    "W",
+    "C90",
+    "I",
+    "N",
+    "UP",
+    "YTT",
+    "B",
+    "A",
+    "COM",
+    "C4",
+    "DTZ",
+    "ISC",
+    "ICN",
+    "INP",
+    "PIE",
+    "PT",
+    "RET",
+    "SIM",
+    "TID",
+    "ARG",
+    "PLC",
+    "PLE",
+    "PLR",
+    "PLW",
+    "RUF",
+]
+ignore = [
+    "B028",
+    "COM812",
+    "D105",
+    "D107",
+    "D212",
+    "ISC001",
+    "N812",
+    "UP006",
+    "UP007",
+    "PLR0913",
+    "PLC1901",
+    "PLR2004",
+    
+]
+unfixable = ["F841"]
+
+[tool.setuptools.packages.find]
+where = ["src",]
+include = ["seglight"]
+
+[tool.setuptools.package-data]
+seglight = ["assets/*", "config/*"]
+
+
+# pyproject.toml
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
