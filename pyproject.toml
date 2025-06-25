@@ -5,13 +5,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "seglight" 
-version = "0.0.1"  
+version = "1.0.0"  
 
 description = "Segmentation based on Lightning"
 
 readme = "README.md"
 
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 
 license = {file = "LICENSE.txt"}
 
@@ -45,6 +45,7 @@ classifiers = [
 
 dependencies = [
   "torch",
+  "lightning",
   "tqdm",
   "albumentations",
   "imageio",
@@ -101,6 +102,7 @@ select = [
     "RUF",
 ]
 ignore = [
+    "B028",
     "COM812",
     "D105",
     "D107",

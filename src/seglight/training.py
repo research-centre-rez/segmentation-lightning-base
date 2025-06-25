@@ -10,11 +10,11 @@ import seglight.image_utils as iu
 
 
 class SemsegLightningModule(L.LightningModule):
-    def __init__(self, model, loss_fn):
+    def __init__(self, model, loss_fn,learning_rate = .001):
         super().__init__()
         self.model = model
         self.loss_fn = loss_fn
-        self.lr = 0.001
+        self.lr = learning_rate
 
     def _step(self, batch):
         images, targets = batch
@@ -39,7 +39,8 @@ class SemsegLightningModule(L.LightningModule):
         self.log("test_loss", loss)
 
     def predict_step(self, batch):
-        imgs, lbls = batch
+        imgs, _ = batch
+        # fixed as long as images have sensible dimensions
         pad_stride = 32
 
         padded, pads = iu.pad_to(imgs, pad_stride)
@@ -50,14 +51,16 @@ class SemsegLightningModule(L.LightningModule):
         return torch.optim.Adam(self.model.parameters(), lr=self.lr)
 
 
-def resolve_loss(loss_name):
+def resolve_loss(loss_name, **kwargs):
     match loss_name:
         case "bce":
-            return BCELoss()
+            return BCELoss(**kwargs)
         case "dice":
-            return DiceLoss()
+            return DiceLoss(**kwargs)
         case "fl":
-            return FocalLoss(alpha=0.9, gamma=0.8)
+            alpha= kwargs.get('alpha',.9)
+            gamma = kwargs.get('gamma',.8)
+            return FocalLoss(alpha=alpha, gamma=gamma)
         case _:
             raise ValueError(f"invalid loss {loss_name=}")
 
@@ -67,7 +70,6 @@ class DiceLoss:
         self.smooth = smooth
 
     def __call__(self, pred, target):
-        # pred = torch.sigmoid(pred)
         intersection = (pred * target).sum(dim=(2, 3))
         union = pred.sum(dim=(2, 3)) + target.sum(dim=(2, 3))
         dice = (2.0 * intersection + self.smooth) / (union + self.smooth)
@@ -91,8 +93,15 @@ class FocalLoss(Module):
         bce_exp = torch.exp(-bce)
         return self.alpha * (1 - bce_exp) ** self.gamma * bce
 
-
+# Utils Callbacks used in the example. See notebooks for more detail or
+# visit docs here
+# https://lightning.ai/docs/pytorch/stable/extensions/callbacks.html
 class MetricsCallback(L.Callback):
+    """
+    A PyTorch Lightning callback to store validation metrics after
+    each validation epoch.
+    """
+
     def __init__(self):
         super().__init__()
         self.metrics = []
@@ -103,6 +112,14 @@ class MetricsCallback(L.Callback):
 
 
 class NoValBarProgress(TQDMProgressBar):
+    """
+    A custom progress bar callback that disables the validation progress bar in
+    PyTorch Lightning.
+
+    Inherits from TQDMProgressBar and overrides methods related to validation
+    progress display.
+    """
+
     def init_validation_tqdm(self):
         bar = super().init_validation_tqdm()
         bar.disable = True

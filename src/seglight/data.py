@@ -1,3 +1,5 @@
+import warnings
+
 import lightning as L
 import numpy as np
 import sklearn.model_selection as ms
@@ -90,7 +92,7 @@ class AugumentedDataset(Dataset):
         if len(images) != len(labels):
             raise Exception(
                 "Number of images and labels doesn't match "
-                "{len(images)=}!={len(labels)=}"
+                f"{len(images)=}!={len(labels)=}"
             )
 
         self.images = [np.float32(img) for img in images]
@@ -109,7 +111,7 @@ class AugumentedDataset(Dataset):
 
         return image, label
 
-    def __getitem__(self, idx) -> dict[str, ChannelFirstImage]:
+    def __getitem__(self, idx) -> tuple[ChannelFirstImage,ChannelFirstImage]:
         image = self.images[idx]
         label = self.labels[idx]
         image_aug, y = self._transform(image, label)
@@ -153,8 +155,24 @@ class TrainTestDataModule(L.LightningDataModule):
         self.test_batch_size = test_batch_size
         self.val_size = val_size
 
-    def setup(self, stage=None):
-        if stage is None or stage == "fit":
+    def setup(self, stage:str):
+        """
+        Set up the environment based on the specified stage.
+
+        This method is typically used in PyTorch Lightning modules to set up
+        data processing logic according to the current stage of execution
+        (e.g., 'fit', 'validate', 'test', or 'predict').
+
+        See: https://lightning.ai/docs/pytorch/stable/data/datamodule.html
+
+        Parameters
+        ----------
+        stage : str
+            The stage for which the setup is being called. Common values are
+            'fit', 'validate', 'test', or 'predict'.
+
+        """
+        if stage in {"fit","validate"}:
             imgs, labels = self.seg_pairs_loader.load("train")
 
             img_train, img_val, label_train, label_val = ms.train_test_split(
@@ -183,16 +201,20 @@ class TrainTestDataModule(L.LightningDataModule):
                 shuffle=False,
             )
 
-        if stage is None or stage == "test":
+        elif stage == "test":
             self.test_dl = self._read_data_pairs(
                 "test",
                 self.test_batch_size
             )
-
-        if stage is None or stage == "predict":
+        elif stage == "predict":
             self.pred_dl = self._read_data_pairs(
                 "predict",
                 self.test_batch_size
+            )
+        else:
+            warnings.warn(
+                f"Parameter {stage=} was not recognized."
+                "Use 'fit', 'validate', 'predict' or 'test'"
             )
 
 

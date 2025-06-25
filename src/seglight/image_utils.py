@@ -9,7 +9,7 @@ def normalize_image(image: Image) -> Image:
     max_value = image.max()
     min_value = image.min()
     if max_value == min_value:
-        warnings.warn("Image min == Image max. Doing nothing.") # noqa B028
+        warnings.warn("Image min == Image max. Doing nothing.")
         return image
     return (image - min_value) / (max_value - min_value)
 
