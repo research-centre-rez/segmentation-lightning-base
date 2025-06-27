@@ -10,7 +10,7 @@ import seglight.image_utils as iu
 
 
 class SemsegLightningModule(L.LightningModule):
-    def __init__(self, model, loss_fn,learning_rate = .001):
+    def __init__(self, model, loss_fn, learning_rate=0.001):
         super().__init__()
         self.model = model
         self.loss_fn = loss_fn
@@ -58,8 +58,8 @@ def resolve_loss(loss_name, **kwargs):
         case "dice":
             return DiceLoss(**kwargs)
         case "fl":
-            alpha= kwargs.get('alpha',.9)
-            gamma = kwargs.get('gamma',.8)
+            alpha = kwargs.get("alpha", 0.9)
+            gamma = kwargs.get("gamma", 0.8)
             return FocalLoss(alpha=alpha, gamma=gamma)
         case _:
             raise ValueError(f"invalid loss {loss_name=}")
@@ -92,6 +92,7 @@ class FocalLoss(Module):
         bce = F.binary_cross_entropy(inputs, targets, reduction=self.reduction)
         bce_exp = torch.exp(-bce)
         return self.alpha * (1 - bce_exp) ** self.gamma * bce
+
 
 # Utils Callbacks used in the example. See notebooks for more detail or
 # visit docs here

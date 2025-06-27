@@ -7,10 +7,8 @@ from seglight.domain import Image
 
 
 def tile_image_with_overlap(
-    img:Image,
-    tile_size:int,
-    overlap:int
-)-> tuple[list[Image],list[tuple[int,int]]]:
+    img: Image, tile_size: int, overlap: int
+) -> tuple[list[Image], list[tuple[int, int]]]:
     tiles = []
     xy = []
     h, w = img.shape[:2]
@@ -26,23 +24,25 @@ def tile_image_with_overlap(
             tile = img[y1:y2, x1:x2]
             tiles.append(tile)
             xy.append((y1, x1))
-    return tiles,xy
+    return tiles, xy
+
 
 def blend_tiles(tiles, xy, image_shape) -> Image:
     h, w = image_shape[:2]
     c = tiles[0].shape[2] if tiles[0].ndim == 3 else 1
 
-    result = np.zeros((h,w,c), dtype=np.float32)
-    #weight is used to take care overlaping regions
-    weight = np.zeros((h,w,c), dtype=np.float32)
+    result = np.zeros((h, w, c), dtype=np.float32)
+    # weight is used to take care overlaping regions
+    weight = np.zeros((h, w, c), dtype=np.float32)
 
-    for (y, x), tile in zip(xy,tiles, strict=False):
+    for (y, x), tile in zip(xy, tiles, strict=False):
         hh, ww = tile.shape[:2]
-        result[y:y+hh, x:x+ww] += tile.reshape(hh, ww, -1)
-        weight[y:y+hh, x:x+ww] += 1
+        result[y : y + hh, x : x + ww] += tile.reshape(hh, ww, -1)
+        weight[y : y + hh, x : x + ww] += 1
 
     result /= np.maximum(weight, 1)
     return result.squeeze()
+
 
 def normalize_image(image: Image) -> Image:
     max_value = image.max()
@@ -56,11 +56,11 @@ def normalize_image(image: Image) -> Image:
 def pad_to(x, stride):
     h, w = x.shape[-2:]
 
-    if h % stride > 0: # noqa SIM108
+    if h % stride > 0:  # noqa SIM108
         new_h = h + stride - h % stride
     else:
         new_h = h
-    if w % stride > 0: # noqa SIM108
+    if w % stride > 0:  # noqa SIM108
         new_w = w + stride - w % stride
     else:
         new_w = w
