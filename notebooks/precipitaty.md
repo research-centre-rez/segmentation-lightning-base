@@ -5,11 +5,11 @@ jupyter:
       extension: .md
       format_name: markdown
       format_version: '1.3'
-      jupytext_version: 1.16.6
+      jupytext_version: 1.16.1
   kernelspec:
-    display_name: computer-vision
+    display_name: seg-ogr
     language: python
-    name: .venv
+    name: seg-ogr
 ---
 
 ```python
@@ -335,6 +335,61 @@ preds = []
 for pb in preds_batched:
     for p in pb:
         preds.append(p)
+```
+
+<!-- #region -->
+In some case you may need to infer images manually, especially when the images are too large for cuda memory. In such situations, consider using tiling e.g.:
+```python
+tiles,xy = iu.tile_image_with_overlap(
+    img,
+    tile_size,
+    overlap
+)
+
+# ... predict individually to tiles_pred and compose them back via
+
+pred = iu.blend_tiles(tiles_pred,xy,img.shape)
+```
+
+See the example below:
+<!-- #endregion -->
+
+```python
+import seglight.image_utils as iu
+from tqdm.cli import tqdm
+import numpy as np
+
+
+def oversized_images(
+    model, # numpy images, not tensors
+    images,
+    tile_size = 2048,
+    tile_size_threshold = 4096, # dimension above which images get tiled
+    overlap = 256
+):
+    preds = []
+    model.eval()
+    with torch.no_grad():
+        for img in tqdm(images):
+            # tile only oversized images
+            if np.any([np.array(img.shape) > tile_size_threshold]):
+                tiles,xy = iu.tile_image_with_overlap(
+                    img,
+                    tile_size,
+                    overlap
+                )
+                
+                tiles_pred = []
+                for tile_img in tiles:
+                    tile_pred = infr.infer(model,tile_img)
+                    tiles_pred.append(tile_pred)
+                
+                pred = iu.blend_tiles(tiles_pred,xy,img.shape)
+            else:
+                pred = infr.infer(model, img)
+            
+            preds.append(pred)
+    return preds
 ```
 
 ```python

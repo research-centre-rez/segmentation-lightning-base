@@ -45,7 +45,7 @@ classifiers = [
 
 dependencies = [
   "torch",
-  "lightning",
+  "lightning==2.3.3", # see bug https://github.com/Lightning-AI/pytorch-lightning/issues/19398
   "tqdm",
   "albumentations",
   "imageio",

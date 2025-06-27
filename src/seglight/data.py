@@ -16,6 +16,7 @@ from seglight.domain import (
 
 CV2_INTER_CUBIC = 2
 
+
 class CVRFolderedDSFormat:
     def __init__(self, data_path, test_txt_path=None):
         self.data_path = data_path
@@ -39,7 +40,7 @@ class CVRFolderedDSFormat:
             inner dictionary maps image type (from filename stem e.g.
             `label.png` -> `label`) to the corresponding image array.
         """
-        train_paths,_ = self._read_train_test_paths()
+        train_paths, _ = self._read_train_test_paths()
         return self._load_dir(train_paths)
 
     def load_test(self):
@@ -57,13 +58,17 @@ class CVRFolderedDSFormat:
             inner dictionary maps image type (from filename stem e.g.
             `label.png` -> `label`) to the corresponding image array.
         """
-        _,test_paths = self._read_train_test_paths()
+        _, test_paths = self._read_train_test_paths()
         return self._load_dir(test_paths)
 
-    def _load_dir(self,data_paths):
+    def _load_dir(self, data_paths):
         data = {}
         for key, dir_path in data_paths.items():
-            data[key] = {p.stem: sio.imread_as_float(p) for p in dir_path.glob("*")}
+            data[key] = {
+                p.stem: sio.imread_as_float(p)
+                for p in dir_path.glob("*")
+                if not p.is_dir()
+            }
         return data
 
     def _read_train_test_paths(self):
@@ -111,7 +116,7 @@ class AugumentedDataset(Dataset):
 
         return image, label
 
-    def __getitem__(self, idx) -> tuple[ChannelFirstImage,ChannelFirstImage]:
+    def __getitem__(self, idx) -> tuple[ChannelFirstImage, ChannelFirstImage]:
         image = self.images[idx]
         label = self.labels[idx]
         image_aug, y = self._transform(image, label)
@@ -135,7 +140,7 @@ class _DummyAug:
 
 
 class TrainTestDataModule(L.LightningDataModule):
-    def __init__( # PLR0913
+    def __init__(  # PLR0913
         self,
         seg_pairs_loader: SegmentationPairsLoaderProtocol,
         augumentations: AugumentationsProtocol | None = None,
@@ -155,7 +160,7 @@ class TrainTestDataModule(L.LightningDataModule):
         self.test_batch_size = test_batch_size
         self.val_size = val_size
 
-    def setup(self, stage:str):
+    def setup(self, stage: str):
         """
         Set up the environment based on the specified stage.
 
@@ -172,7 +177,7 @@ class TrainTestDataModule(L.LightningDataModule):
             'fit', 'validate', 'test', or 'predict'.
 
         """
-        if stage in {"fit","validate"}:
+        if stage in {"fit", "validate"}:
             imgs, labels = self.seg_pairs_loader.load("train")
 
             img_train, img_val, label_train, label_val = ms.train_test_split(
@@ -202,23 +207,16 @@ class TrainTestDataModule(L.LightningDataModule):
             )
 
         elif stage == "test":
-            self.test_dl = self._read_data_pairs(
-                "test",
-                self.test_batch_size
-            )
+            self.test_dl = self._read_data_pairs("test", self.test_batch_size)
         elif stage == "predict":
-            self.pred_dl = self._read_data_pairs(
-                "predict",
-                self.test_batch_size
-            )
+            self.pred_dl = self._read_data_pairs("predict", self.test_batch_size)
         else:
             warnings.warn(
                 f"Parameter {stage=} was not recognized."
                 "Use 'fit', 'validate', 'predict' or 'test'"
             )
 
-
-    def _read_data_pairs(self, set_name,batch_size):
+    def _read_data_pairs(self, set_name, batch_size):
         imgs, labels = self.seg_pairs_loader.load(set_name)
         ds = AugumentedDataset(imgs, labels)
         return DataLoader(
@@ -226,7 +224,6 @@ class TrainTestDataModule(L.LightningDataModule):
             batch_size=batch_size,
             shuffle=False,
         )
-
 
     def train_dataloader(self):
         return self.train_dl
