@@ -10,7 +10,7 @@ def tile_image_with_overlap(
     img:Image,
     tile_size:int,
     overlap:int
-)-> tuple[list[Image],list[tuple[int,int]], int,tuple[int,int]]:
+)-> tuple[list[Image],list[tuple[int,int]]]:
     tiles = []
     xy = []
     h, w = img.shape[:2]
@@ -33,6 +33,7 @@ def blend_tiles(tiles, xy, image_shape) -> Image:
     c = tiles[0].shape[2] if tiles[0].ndim == 3 else 1
 
     result = np.zeros((h,w,c), dtype=np.float32)
+    #weight is used to take care overlaping regions
     weight = np.zeros((h,w,c), dtype=np.float32)
 
     for (y, x), tile in zip(xy,tiles, strict=False):

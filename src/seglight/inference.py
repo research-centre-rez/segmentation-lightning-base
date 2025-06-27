@@ -4,7 +4,7 @@ import torch
 from seglight.domain import Image
 
 
-def infer(model,img:Image):
+def infer(model, img: Image):
     """
     Runs inference on a single numpy image using the given pytorch model.
 

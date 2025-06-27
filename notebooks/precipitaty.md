@@ -361,11 +361,10 @@ import numpy as np
 
 
 def oversized_images(
-    dm,
     model, # numpy images, not tensors
     images,
-    labels,
     tile_size = 2048,
+    tile_size_threshold = 4096, # dimension above which images get tiled
     overlap = 256
 ):
     preds = []
@@ -373,7 +372,7 @@ def oversized_images(
     with torch.no_grad():
         for img in tqdm(images):
             # tile only oversized images
-            if np.any([np.array(img.shape) > tile_size*2]):
+            if np.any([np.array(img.shape) > tile_size_threshold]):
                 tiles,xy = iu.tile_image_with_overlap(
                     img,
                     tile_size,
