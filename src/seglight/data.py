@@ -18,9 +18,12 @@ CV2_INTER_CUBIC = 2
 
 
 class CVRFolderedDSFormat:
-    def __init__(self, data_path, test_txt_path=None):
+    def __init__(self, data_path, test_txt_path=None, no_test=False):
         self.data_path = data_path
-        if test_txt_path is None:
+
+        if no_test:
+            self.test_txt_path = None
+        elif test_txt_path is None:
             self.test_txt_path = data_path / "test.txt"
         else:
             self.test_txt_path = test_txt_path
@@ -73,8 +76,12 @@ class CVRFolderedDSFormat:
 
     def _read_train_test_paths(self):
         all_data = {p.name: p for p in self.data_path.glob("*") if p.is_dir()}
-        with open(self.test_txt_path) as f:
-            test_names = {line.strip() for line in f.readlines()}
+
+        if self.test_txt_path is not None:
+            with open(self.test_txt_path) as f:
+                test_names = {line.strip() for line in f.readlines()}
+        else:
+            test_names = {}
 
         train_paths = {}
         test_paths = {}
