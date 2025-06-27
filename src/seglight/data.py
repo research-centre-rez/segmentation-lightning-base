@@ -63,7 +63,11 @@ class CVRFolderedDSFormat:
     def _load_dir(self,data_paths):
         data = {}
         for key, dir_path in data_paths.items():
-            data[key] = {p.stem: sio.imread_as_float(p) for p in dir_path.glob("*")}
+            data[key] = {
+                p.stem: sio.imread_as_float(p)
+                for p in dir_path.glob("*")
+                if not p.is_dir()
+            }
         return data
 
     def _read_train_test_paths(self):

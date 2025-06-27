@@ -1,9 +1,47 @@
 import warnings
 
+import numpy as np
 from torch.functional import F
 
 from seglight.domain import Image
 
+
+def tile_image_with_overlap(
+    img:Image,
+    tile_size:int,
+    overlap:int
+)-> tuple(list[Image],list[tuple[int,int]], int,tuple[int,int]):
+    tiles = []
+    xy = []
+    h, w = img.shape[:2]
+    stride = tile_size - overlap
+
+    for y in range(0, h, stride):
+        for x in range(0, w, stride):
+            y1 = y
+            x1 = x
+            y2 = min(y1 + tile_size, h)
+            x2 = min(x1 + tile_size, w)
+
+            tile = img[y1:y2, x1:x2]
+            tiles.append(tile)
+            xy.append((y1, x1))
+    return tiles,xy,img.shape
+
+def blend_tiles(tiles, xy, image_shape) -> Image:
+    h, w = image_shape[:2]
+    c = tiles[0].shape[2] if tiles[0].ndim == 3 else 1
+
+    result = np.zeros((h,w,c), dtype=np.float32)
+    weight = np.zeros((h,w,c), dtype=np.float32)
+
+    for (y, x), tile in zip(xy,tiles, strict=False):
+        hh, ww = tile.shape[:2]
+        result[y:y+hh, x:x+ww] += tile.reshape(hh, ww, -1)
+        weight[y:y+hh, x:x+ww] += 1
+
+    result /= np.maximum(weight, 1)
+    return result.squeeze()
 
 def normalize_image(image: Image) -> Image:
     max_value = image.max()
