@@ -10,7 +10,7 @@ def tile_image_with_overlap(
     img:Image,
     tile_size:int,
     overlap:int
-)-> tuple(list[Image],list[tuple[int,int]], int,tuple[int,int]):
+)-> tuple[list[Image],list[tuple[int,int]], int,tuple[int,int]]:
     tiles = []
     xy = []
     h, w = img.shape[:2]
@@ -26,7 +26,7 @@ def tile_image_with_overlap(
             tile = img[y1:y2, x1:x2]
             tiles.append(tile)
             xy.append((y1, x1))
-    return tiles,xy,img.shape
+    return tiles,xy
 
 def blend_tiles(tiles, xy, image_shape) -> Image:
     h, w = image_shape[:2]

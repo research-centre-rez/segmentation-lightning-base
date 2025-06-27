@@ -1,25 +1,36 @@
-import seglight.image_utils as iu
+import numpy as np
+import torch
+
 from seglight.domain import Image
 
 
-class ImgTilingResult:
-    def __init__(self,tiles,xy,img_shape):
-        self.tiles = tiles
-        self.xy = xy
-        self.img_shape = img_shape
+def infer(model,img:Image):
+    """
+    Runs inference on a single numpy image using the given pytorch model.
 
-def tile_image(img:Image, tile_size:int, overlap:int) -> ImgTilingResult:
-    tiles,xy,overlap,img_shape = iu.tile_image_with_overlap(img,tile_size,overlap)
+    Parameters
+    ----------
+    model : torch.nn.Module
+        A PyTorch model already placed on a device (e.g. `model.to(device)` was
+        invoked)
+    img : np.ndarray
+        Input image as a NumPy array. Expected shape is (H, W) or (H, W, C).
 
-    return ImgTilingResult(
-        tiles,
-        xy,
-        img_shape
-    )
+    Returns
+    -------
+    np.ndarray
+        Model prediction as a NumPy array with batch and channel dimensions removed.
+        Shape depends on the model output, typically (H, W) or (H, W, C) depending on
+        model classes.
+    """
+    device = model.device
+    img = img[None] if len(img.shape) == 2 else np.rollaxis(img, -1)
 
-def blend_tiles(tile_result: ImgTilingResult)->Image:
-    return iu.blend_tiles(
-        tile_result.tiles,
-        tile_result.xy,
-        tile_result.img_shape
-    )
+    img_t = torch.Tensor(img[None]).to(device)
+    pred = model(img_t)
+    pred = np.squeeze(pred.detach().cpu().numpy())
+
+    if len(pred.shape) == 2:
+        return pred
+    # channel last
+    return np.dstack(pred)
