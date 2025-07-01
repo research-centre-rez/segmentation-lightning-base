@@ -153,12 +153,14 @@ class AugumentedDataset(Dataset):
         image_aug, y = self._transform(image, label)
 
         if len(image_aug.shape) == 2:
+            # (H,W) -> (1,H,W)
             x = image_aug[None]
         else:
+            # (H,W,C) -> (C,H,W)
             x = np.rollaxis(image_aug, -1)
 
         if len(y.shape) > 2:
-            # e.g. channel first
+            # (H,W,C) -> (C,H,W)
             y = np.rollaxis(y, -1)
 
         return x, y
