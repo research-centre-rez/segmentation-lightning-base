@@ -18,9 +18,32 @@ CV2_INTER_CUBIC = 2
 
 
 class CVRFolderedDSFormat:
-    def __init__(self, data_path, test_txt_path=None):
+    def __init__(self, data_path, test_txt_path=None, no_test=False):
+        """
+        A dataset format handler for CVR-style foldered datasets.
+
+        This class manages dataset paths and test file configuration
+        based on provided arguments, allowing optional disabling of test data.
+
+        Parameters
+        ----------
+        data_path : pathlib.Path or str
+            Path to the root directory of the dataset.
+
+        test_txt_path : pathlib.Path or str, optional
+            Path to the test set file. If None and `no_test` is False,
+            defaults to `data_path / "test.txt"`.
+
+        no_test : bool, optional
+            If True, disables the use of test file entirely by setting
+            `self.test_txt_path` to None. If False and `test_txt_path` is None,
+            the default path is used.
+        """
         self.data_path = data_path
-        if test_txt_path is None:
+
+        if no_test:
+            self.test_txt_path = None
+        elif test_txt_path is None:
             self.test_txt_path = data_path / "test.txt"
         else:
             self.test_txt_path = test_txt_path
@@ -72,9 +95,17 @@ class CVRFolderedDSFormat:
         return data
 
     def _read_train_test_paths(self):
-        all_data = {p.name: p for p in self.data_path.glob("*") if p.is_dir()}
-        with open(self.test_txt_path) as f:
-            test_names = {line.strip() for line in f.readlines()}
+        all_data = {
+            p.name: p
+            for p in self.data_path.glob("*")
+            if p.is_dir() and p.name[0] != "."  # avoid dotfolder (.git)
+        }
+
+        if self.test_txt_path is not None:
+            with open(self.test_txt_path) as f:
+                test_names = {line.strip() for line in f.readlines()}
+        else:
+            test_names = {}
 
         train_paths = {}
         test_paths = {}
@@ -121,9 +152,15 @@ class AugumentedDataset(Dataset):
         label = self.labels[idx]
         image_aug, y = self._transform(image, label)
 
-        x = image_aug[None]
+        if len(image_aug.shape) == 2:
+            # (H,W) -> (1,H,W)
+            x = image_aug[None]
+        else:
+            # (H,W,C) -> (C,H,W)
+            x = np.rollaxis(image_aug, -1)
+
         if len(y.shape) > 2:
-            # e.g. channel first
+            # (H,W,C) -> (C,H,W)
             y = np.rollaxis(y, -1)
 
         return x, y

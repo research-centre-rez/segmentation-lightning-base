@@ -56,11 +56,11 @@ def normalize_image(image: Image) -> Image:
 def pad_to(x, stride):
     h, w = x.shape[-2:]
 
-    if h % stride > 0:  # noqa SIM108
+    if h % stride > 0:
         new_h = h + stride - h % stride
     else:
         new_h = h
-    if w % stride > 0:  # noqa SIM108
+    if w % stride > 0:
         new_w = w + stride - w % stride
     else:
         new_w = w
