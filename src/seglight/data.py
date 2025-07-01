@@ -372,7 +372,7 @@ def _read_label_map(label_path):
 def _get_color_as_bin(lbl, color):
     bool_mask = lbl == np.array(color)[None, None]
     color_match = np.all(bool_mask, axis=2)
-    return np.uint8(color_match)
+    return np.float32(color_match)
 
 
 def _colors_to_masks(lbl, labels_dict):
