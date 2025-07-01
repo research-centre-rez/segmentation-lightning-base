@@ -203,6 +203,9 @@ class CVRFolderedDSFormat:
         destination: os.PathLike,
         dataset: dict[str, dict[str, Image]],
     ):
+        if Path(destination).exists():
+            raise Exception(f"Destination {destination} exists!")
+
         dest = Path(tempfile.mkdtemp())
         for sample_name, imgs_dict in dataset.items():
             _dir = dest / sample_name
