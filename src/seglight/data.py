@@ -206,7 +206,7 @@ class CVRFolderedDSFormat:
         dest = Path(tempfile.mkdtemp())
         for sample_name, imgs_dict in dataset.items():
             _dir = dest / sample_name
-            _dir.mkdir(exists_ok=True, parents=True)
+            _dir.mkdir(exist_ok=True, parents=True)
 
             for img_name, img in imgs_dict.items():
                 sio.imwrite_1ch(_dir / f"{img_name}.png", img)
