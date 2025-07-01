@@ -75,7 +75,11 @@ class CVRFolderedDSFormat:
         return data
 
     def _read_train_test_paths(self):
-        all_data = {p.name: p for p in self.data_path.glob("*") if p.is_dir()}
+        all_data = {
+            p.name: p
+            for p in self.data_path.glob("*")
+            if p.is_dir() and p.name[0] != "."  # avoid dotfolder (.git)
+        }
 
         if self.test_txt_path is not None:
             with open(self.test_txt_path) as f:
@@ -128,7 +132,11 @@ class AugumentedDataset(Dataset):
         label = self.labels[idx]
         image_aug, y = self._transform(image, label)
 
-        x = image_aug[None]
+        if len(image_aug.shape) == 2:
+            x = image_aug[None]
+        else:
+            x = np.rollaxis(image_aug, -1)
+
         if len(y.shape) > 2:
             # e.g. channel first
             y = np.rollaxis(y, -1)
