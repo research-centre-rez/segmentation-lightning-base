@@ -19,6 +19,26 @@ CV2_INTER_CUBIC = 2
 
 class CVRFolderedDSFormat:
     def __init__(self, data_path, test_txt_path=None, no_test=False):
+        """
+        A dataset format handler for CVR-style foldered datasets.
+
+        This class manages dataset paths and test file configuration
+        based on provided arguments, allowing optional disabling of test data.
+
+        Parameters
+        ----------
+        data_path : pathlib.Path or str
+            Path to the root directory of the dataset.
+
+        test_txt_path : pathlib.Path or str, optional
+            Path to the test set file. If None and `no_test` is False,
+            defaults to `data_path / "test.txt"`.
+
+        no_test : bool, optional
+            If True, disables the use of test file entirely by setting
+            `self.test_txt_path` to None. If False and `test_txt_path` is None,
+            the default path is used.
+        """
         self.data_path = data_path
 
         if no_test:
