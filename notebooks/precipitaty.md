@@ -359,12 +359,10 @@ import seglight.image_utils as iu
 from tqdm.cli import tqdm
 import numpy as np
 
-
 def oversized_images(
     model, # numpy images, not tensors
     images,
     tile_size = 2048,
-    tile_size_threshold = 4096, # dimension above which images get tiled
     overlap = 256
 ):
     preds = []
@@ -372,19 +370,13 @@ def oversized_images(
     with torch.no_grad():
         for img in tqdm(images):
             # tile only oversized images
-            if np.any([np.array(img.shape) > tile_size_threshold]):
-                tiles,xy = iu.tile_image_with_overlap(
+            if np.any([np.array(img.shape) > tile_size]):
+                pred = infr.infer_oversized(
+                    model,
                     img,
-                    tile_size,
-                    overlap
+                    tile_size=2048,
+                    overlap=256
                 )
-                
-                tiles_pred = []
-                for tile_img in tiles:
-                    tile_pred = infr.infer(model,tile_img)
-                    tiles_pred.append(tile_pred)
-                
-                pred = iu.blend_tiles(tiles_pred,xy,img.shape)
             else:
                 pred = infr.infer(model, img)
             
