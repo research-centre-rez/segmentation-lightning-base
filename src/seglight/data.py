@@ -89,8 +89,8 @@ class CamVidDSFormat:
             f.write(f"{r} {g} {b} foreground\n")
 
         with open(tmp_dir / "default.txt", "w") as f:
-            for img_p, lib_p in zip(img_paths, label_paths, strict=False):
-                line = f"/{'/'.join(img_p.parts[-2:])} /{'/'.join(lib_p.parts[-2:])}\n"
+            for img_p, lbl_p in zip(img_paths, label_paths, strict=False):
+                line = f"/{'/'.join(img_p.parts[-2:])} /{'/'.join(lbl_p.parts[-2:])}\n"
                 f.write(line)
 
         shutil.move(tmp_dir, destination)
@@ -371,9 +371,29 @@ class TrainTestDataModule(L.LightningDataModule):
         return self.pred_dl
 
 
-def read_camvid_pairs(path: os.PathLike):
+def read_camvid_pairs(path: os.PathLike) -> list[tuple[os.PathLike, os.PathLike]]:
+    """
+    Read CamVid file pairs from a text file.
+
+    Each line in the file is expected to contain two paths separated by ' ',
+    referring to an image and its corresponding label file. This format is used
+    in datasets like CamVid.
+
+    Example line in the file:
+        default/0001TP_006690.png /defaultannot/0001TP_006690_L.png
+
+    Parameters
+    ----------
+    path : os.PathLike
+        Path to the `.txt` file containing the dataset file pairs.
+
+    Returns
+    -------
+    list of tuple of os.PathLike
+        A list of (image_path, label_path) pairs with leading slashes removed.
+    """
     with open(path) as f:
-        sep = " /"
+        sep = " /"  # additinal stripping of '/' to make paths relative
         parts = (line.strip().split(sep) for line in f.readlines())
         return [[Path(pp.lstrip("/")) for pp in p] for p in parts if len(p) == 2]
 
