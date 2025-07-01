@@ -22,6 +22,11 @@ CV2_INTER_CUBIC = 2
 
 
 class CamVidDSFormat:
+    """
+    Class implementing handling of CamVid files
+    See: https://docs.cvat.ai/docs/manual/advanced/formats/format-camvid/
+    """
+
     def __init__(self, dataset_root: os.PathLike, txt_name="default.txt"):
         self.dataset_root = Path(dataset_root)
         self.txt_name = txt_name
