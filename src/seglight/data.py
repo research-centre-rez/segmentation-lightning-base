@@ -1,4 +1,8 @@
+import os
+import shutil
+import tempfile
 import warnings
+from pathlib import Path
 
 import lightning as L
 import numpy as np
@@ -17,8 +21,80 @@ from seglight.domain import (
 CV2_INTER_CUBIC = 2
 
 
+class CamVidDSFormat:
+    def __init__(self, dataset_root: os.PathLike, txt_name="default.txt"):
+        self.dataset_root = Path(dataset_root)
+        self.txt_name = txt_name
+
+    def load_train(self):
+        dr = self.dataset_root
+
+        label_dict = _read_label_map(dr / "label_colors.txt")
+        pairs_paths = read_camvid_pairs(dr / self.txt_name)
+
+        data = {}
+        for img_p, lbl_p in pairs_paths:
+            name = img_p.stem
+            img = sio.imread_as_float(dr / str(img_p))
+            lbl_ch = sio.imread_raw(dr / str(lbl_p))
+
+            lbls = _colors_to_masks(lbl_ch, label_dict)
+
+            data[name] = {"img": img} | lbls
+        return data
+
+    def load_test(self):
+        warnings.warn("No test in Camvid DS Format")
+        return {}
+
+    @staticmethod
+    def dump(
+        destination: os.PathLike,
+        dataset: dict[str, dict[str, Image]],
+        imgs_dir_name="default",
+        labels_dir_name="defaultannot",
+        label_dataset_key="label",
+        img_dataset_key="img",
+        rgb_label_color=(255, 255, 100),
+    ):
+        if Path(destination).exists():
+            raise Exception(f"Destination {destination} exists!")
+
+        tmp_dir = Path(tempfile.mkdtemp())
+
+        img_paths = []
+        label_paths = []
+        for sample_name, data in dataset.items():
+            img = data[img_dataset_key]
+            img_path = tmp_dir / imgs_dir_name / f"{sample_name}_img.png"
+            img_paths.append(img_path)
+            img_path.parent.mkdir(exist_ok=True, parents=True)
+            sio.imwrite_1ch(img_path, img)
+
+            label = data[label_dataset_key]
+            label_path = tmp_dir / labels_dir_name / f"{sample_name}_label.png"
+            label_paths.append(label_path)
+            label_path.parent.mkdir(exist_ok=True, parents=True)
+            label_rgb = _colorize_gs_image(label, rgb_label_color)
+            sio.imwrite_3ch(label_path, label_rgb)
+
+        lbl_colors_path = tmp_dir / "label_colors.txt"
+        r, g, b = [int(c) for c in rgb_label_color]
+        with open(lbl_colors_path, "w") as f:
+            f.write(f"{r} {g} {b} foreground\n")
+
+        with open(tmp_dir / "default.txt", "w") as f:
+            for img_p, lib_p in zip(img_paths, label_paths, strict=False):
+                line = f"/{'/'.join(img_p.parts[-2:])} /{'/'.join(lib_p.parts[-2:])}\n"
+                f.write(line)
+
+        shutil.move(tmp_dir, destination)
+
+
 class CVRFolderedDSFormat:
-    def __init__(self, data_path, test_txt_path=None, no_test=False):
+    def __init__(
+        self, data_path: os.PathLike, test_txt_path: str | None = None, no_test=False
+    ):
         """
         A dataset format handler for CVR-style foldered datasets.
 
@@ -44,11 +120,11 @@ class CVRFolderedDSFormat:
         if no_test:
             self.test_txt_path = None
         elif test_txt_path is None:
-            self.test_txt_path = data_path / "test.txt"
+            self.test_txt_path = Path(data_path) / "test.txt"
         else:
-            self.test_txt_path = test_txt_path
+            self.test_txt_path = Path(test_txt_path)
 
-    def load_train(self):
+    def load_train(self) -> dict[str, dict[str, Image]]:
         """
         Load train images from multiple sample directories into a dictionary.
 
@@ -66,7 +142,7 @@ class CVRFolderedDSFormat:
         train_paths, _ = self._read_train_test_paths()
         return self._load_dir(train_paths)
 
-    def load_test(self):
+    def load_test(self) -> dict[str, dict[str, Image]]:
         """
         Load train images from multiple sample directories into a dictionary.
 
@@ -273,3 +349,34 @@ class TrainTestDataModule(L.LightningDataModule):
 
     def predict_dataloader(self):
         return self.pred_dl
+
+
+def read_camvid_pairs(path: os.PathLike):
+    with open(path) as f:
+        sep = " /"
+        parts = (line.strip().split(sep) for line in f.readlines())
+        return [[Path(pp.lstrip("/")) for pp in p] for p in parts if len(p) == 2]
+
+
+def _read_label_map(label_path):
+    with open(label_path) as f:
+        l_split = (line.split() for line in f.readlines())
+        return {lbl_id: [int(r), int(g), int(b)] for r, g, b, lbl_id in l_split}
+
+
+def _get_color_as_bin(lbl, color):
+    bool_mask = lbl == np.array(color)[None, None]
+    color_match = np.all(bool_mask, axis=2)
+    return np.uint8(color_match)
+
+
+def _colors_to_masks(lbl, labels_dict):
+    return {
+        label_id: _get_color_as_bin(lbl, col) for label_id, col in labels_dict.items()
+    }
+
+
+def _colorize_gs_image(image: Image, color_rgb: list[int]):
+    color = np.array(color_rgb)
+    img_rgb = np.dstack([image] * 3) * color
+    return np.uint8(img_rgb)

@@ -6,6 +6,11 @@ from torch.functional import F
 from seglight.domain import Image
 
 
+def rgb2gray(rgb):
+    # Values taken from XYZ
+    return np.dot(rgb[:, :, :3], [0.2989, 0.5870, 0.1140])
+
+
 def tile_image_with_overlap(
     img: Image, tile_size: int, overlap: int
 ) -> tuple[list[Image], list[tuple[int, int]]]:
