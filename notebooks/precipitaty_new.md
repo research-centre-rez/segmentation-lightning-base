@@ -7,7 +7,7 @@ jupyter:
       format_version: '1.3'
       jupytext_version: 1.17.2
   kernelspec:
-    display_name: light
+    display_name: Python 3 (ipykernel)
     language: python
     name: python3
 ---
@@ -178,6 +178,8 @@ def prepare_model(
     decoder_channels = np.array([starting_decoder_channel] * encoder_depth)
     pows = list(range(encoder_depth))
     decoder_channels = decoder_channels * [2**p for p in pows]
+    decoder_channels = decoder_channels.tolist()
+    decoder_channels = [int(x) for x in decoder_channels]
 
     return Unet(
         encoder_name="resnet50",
@@ -199,8 +201,8 @@ def model_builder(params, loss_fn) -> tr.SemsegLightningModule:
         Returns:
             A Segmentation model.
     """
-    decoder_channels = params["decoder_channels"]
-    encoder_depth = params["encoder_depth"]
+    decoder_channels = int(params["decoder_channels"])    
+    encoder_depth = int(params["encoder_depth"])
     m = prepare_model(
         starting_decoder_channel=decoder_channels,
         encoder_depth=encoder_depth,
@@ -246,6 +248,12 @@ Important parameters to change
 <!-- #endregion -->
 
 ```python
+import torch
+from torchmetrics import JaccardIndex  # If using torchmetrics
+
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+print("Using device:", device)
+
 from seglight.hyperparam import OptunaLightningTuner
 
 # Define the search space for hyperparameters
@@ -254,20 +262,22 @@ search_space = {"decoder_channels": [8, 16], "encoder_depth": [3]}
 # Initialize the Optuna Lightning Tuner
 tuner = OptunaLightningTuner(
     model_builder=model_builder,
+    model_class=tr.SemsegLightningModule, 
     loss_fn=loss_fn,
     datamodule=dm,
     param_search_space=search_space,
     direction="minimize",
-    max_epochs=1,
-    monitor_metric="val_loss",
+    max_epochs=3,
+    accelerator="cuda" if torch.cuda.is_available() else "cpu",
+    eval_metrics = JaccardIndex(task="binary"),
     callbacks=[metrics_callback],
     check_val_every_n_epoch=1,
-    log_every_n_steps=1,
+    log_every_n_steps=2,
     model_dir=model_dir,
+    study_name = "seglight", 
 )
-
 study = tuner.run_study(
-    n_trials=1, sampler="grid"
+    n_trials=2, sampler="grid"
 )  # can be "random", "grid" or "tpe" default is "grid"
 ```
 
@@ -284,8 +294,9 @@ print(f"Best trial number: {study.best_trial.number}")
 <!-- #endregion -->
 
 ```python
-import optuna.visualization
 from plotly.io import show
+import optuna.visualization
+
 
 fig = optuna.visualization.plot_intermediate_values(study)
 
@@ -297,10 +308,10 @@ show(fig)
 This is a good place to add custom metrics if needed
 
 ```python
-predictions = tuner.predict_best_model(study)
+predictions = tuner.predict(dm, study)
 ```
 
-```python
+```python editable=true slideshow={"slide_type": ""}
 import matplotlib.pyplot as plt
 
 # Display the first 5 predictions along with their corresponding images and labels
@@ -313,4 +324,8 @@ for (img, l), p in list(zip(dm.pred_dl, predictions, strict=False))[:5]:
         ax.imshow(np.squeeze(im), cmap="gray")
         ax.set_title(title)
     plt.show()
+```
+
+```python
+exit()
 ```
