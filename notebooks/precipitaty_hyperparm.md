@@ -334,13 +334,5 @@ for (img, l), p in list(zip(dm.pred_dl, predictions, strict=False))[:5]:
 ```
 
 ```python
-#exit()
-```
-
-```python
-
-```
-
-```python
-
+# exit()
 ```
