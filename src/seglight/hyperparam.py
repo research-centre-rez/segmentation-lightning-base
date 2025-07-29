@@ -46,6 +46,7 @@ class TunerConfig:
     ckpt_dir: str = "checkpoints"
     model_dir: str = "output"
     study_name: str = "seglight_tuning"
+    save_top_k: int = 1
 
 
 class OptunaLightningTuner:
@@ -80,7 +81,7 @@ class OptunaLightningTuner:
         checkpoint_callback = ModelCheckpoint(
             dirpath=self.config.ckpt_dir,
             filename=filename,
-            save_top_k=1,
+            save_top_k=self.config.save_top_k,
             monitor=self.config.monitor_metric,
         )
 
