@@ -21,7 +21,7 @@ jupyter:
 from pathlib import Path
 
 data_path = Path("data")
-model_dir = Path("model")
+model_dir = Path("output")
 ```
 
 # Installing project specific dependencies
@@ -201,7 +201,7 @@ def model_builder(params, loss_fn) -> tr.SemsegLightningModule:
         Returns:
             A Segmentation model.
     """
-    decoder_channels = int(params["decoder_channels"])    
+    decoder_channels = int(params["decoder_channels"])
     encoder_depth = int(params["encoder_depth"])
     m = prepare_model(
         starting_decoder_channel=decoder_channels,
@@ -249,36 +249,43 @@ Important parameters to change
 
 ```python
 import torch
-from torchmetrics import JaccardIndex  # If using torchmetrics
+from torchmetrics import JaccardIndex
+
+from seglight.hyperparam import (
+    OptunaLightningTuner,
+    TunerConfig,
+)
 
 device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 print("Using device:", device)
 
-from seglight.hyperparam import OptunaLightningTuner
-
 # Define the search space for hyperparameters
 search_space = {"decoder_channels": [8, 16], "encoder_depth": [3]}
 
-# Initialize the Optuna Lightning Tuner
-tuner = OptunaLightningTuner(
-    model_builder=model_builder,
-    model_class=tr.SemsegLightningModule, 
-    loss_fn=loss_fn,
-    datamodule=dm,
-    param_search_space=search_space,
+config = TunerConfig(
     direction="minimize",
     max_epochs=3,
     accelerator="cuda" if torch.cuda.is_available() else "cpu",
-    eval_metrics = JaccardIndex(task="binary"),
+    eval_metrics=JaccardIndex(task="binary"),
     callbacks=[metrics_callback],
     check_val_every_n_epoch=1,
     log_every_n_steps=2,
     model_dir=model_dir,
-    study_name = "seglight", 
+    study_name="seglight",
 )
-study = tuner.run_study(
-    n_trials=2, sampler="grid"
-)  # can be "random", "grid" or "tpe" default is "grid"
+
+# Initialize the Optuna Lightning Tuner with config
+tuner = OptunaLightningTuner(
+    model_builder=model_builder,
+    model_class=tr.SemsegLightningModule,
+    loss_fn=loss_fn,
+    datamodule=dm,
+    param_search_space=search_space,
+    config=config,
+)
+
+study = tuner.run_study(n_trials=2, sampler="grid")
+
 ```
 
 ```python
@@ -327,5 +334,13 @@ for (img, l), p in list(zip(dm.pred_dl, predictions, strict=False))[:5]:
 ```
 
 ```python
-exit()
+#exit()
+```
+
+```python
+
+```
+
+```python
+
 ```
