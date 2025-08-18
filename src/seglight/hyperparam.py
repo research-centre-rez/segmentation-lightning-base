@@ -1,11 +1,11 @@
 import json
 import logging
 import os
+import pathlib
 from collections.abc import Callable
 from dataclasses import dataclass
 
 import lightning as L
-import numpy as np
 import optuna
 import torch
 from lightning.pytorch.callbacks import Callback, ModelCheckpoint
@@ -16,33 +16,56 @@ from optuna.samplers import BaseSampler
 
 from seglight.data import TrainTestDataModule
 
-
-def setup_logging():
-    level = logging.INFO
-
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-    )
-
-
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class TunerConfig:
-    direction: str = "minimize"  # "minimize" or "maximize"
+    """
+    Configuration for the hyperparameter tuning process.
+
+    Parameters
+    ----------
+    direction : {"minimize", "maximize"}
+        Optimization direction.
+    max_epochs : int
+        Maximum number of epochs for training.
+    accelerator : {"cpu", "cuda"}
+        Device type.
+    devices : int
+        Number of devices to use for training.
+    monitor_metric : str
+        Metric to monitor for choosing the next set of hyperparameters.
+    eval_metrics : callable or None
+        Custom evaluation metrics.
+    callbacks : list of Callback or None
+        Training callbacks.
+    check_val_every_n_epoch : int
+        Frequency of validation checks.
+    log_every_n_steps : int
+        Frequency of logging during training.
+    num_sanity_val_steps : int
+        Number of validation steps before training starts.
+    ckpt_dir : str
+        Directory to save model checkpoints.
+    model_dir : str
+        Directory to save the final model.
+    study_name : str
+        Name of the Optuna study.
+    save_top_k : int
+        Number of top models to save per one optimization run.
+    """
+
+    direction: str = "minimize"
     max_epochs: int = 100
-    accelerator: str = "cpu"  # "cpu", "cuda",...
+    accelerator: str = "cpu"
     devices: int = 1
     monitor_metric: str = "val_loss"
     eval_metrics: Callable | None = None
-    callbacks: list[Callback] | None = (
-        None  # dont need to define a ModelCheckpoint callback
-    )
+    callbacks: list[Callback] | None = None
     check_val_every_n_epoch: int = 1
-    log_every_n_steps: int = 1  # log after n steps (batches)
-    num_sanity_val_steps: int = 0  # number of validation steps to run before training
+    log_every_n_steps: int = 1
+    num_sanity_val_steps: int = 0
     ckpt_dir: str = "checkpoints"
     model_dir: str = "output"
     study_name: str = "seglight_tuning"
@@ -50,13 +73,33 @@ class TunerConfig:
 
 
 class OptunaLightningTuner:
+    """
+    Wrapper around Optuna hyperparameter tuning with PyTorch Lightning.
+
+    Parameters
+    ----------
+    model_builder : Callable
+        Function that builds the model instance given hyperparameters.
+    model_class : type[LightningModule]
+        LightningModule class used for training.
+    loss_fn : Callable
+        Loss function for optimization.
+    datamodule : TrainTestDataModule
+        DataModule providing train/validation/test splits.
+    param_search_space : dict[str, list]
+        Dictionary defining the hyperparameter search space, where keys are
+        parameter names and values are lists of candidate values.
+    config : TunerConfig
+        Configuration for training and tuning.
+    """
+
     def __init__(
         self,
         model_builder: Callable,
         model_class: type[LightningModule],
         loss_fn: Callable,
         datamodule: TrainTestDataModule,
-        param_search_space: dict,  # dict: {param_name: list_of_values}
+        param_search_space: dict,
         config: TunerConfig,
     ):
         self.model_builder = model_builder
@@ -106,7 +149,7 @@ class OptunaLightningTuner:
 
     def _save_to_pt(self, trial: optuna.trial.Trial, model):
         filename = f"model_trial_{trial.number}.pt"
-        model_path = os.path.join(self.config.model_dir, filename)
+        model_path = pathlib.Path(self.config.model_dir) / filename
         os.makedirs(self.config.model_dir, exist_ok=True)
         scripted_model = torch.jit.script(model)
         torch.jit.save(scripted_model, model_path)
@@ -154,7 +197,7 @@ class OptunaLightningTuner:
             ],
         }
 
-        json_path = os.path.join(self.config.model_dir, filename)
+        json_path = pathlib.Path(self.config.model_dir) / filename
         with open(json_path, "w") as f:
             json.dump(results, f, indent=4)
         logger.info(f"Study results saved to {json_path}")
@@ -163,11 +206,15 @@ class OptunaLightningTuner:
         """
         Objective function for Optuna hyperparameter tuning.
 
-        Args:
-            trial (optuna.trial.Trial): A single trial instance.
+        Parameters
+        ----------
+        trial : optuna.trial.Trial
+            A single trial instance.
 
-        Returns:
-            float: The value of the metric used for optimization.
+        Returns
+        -------
+        float
+            The value of the metric used for optimization.
         """
 
         model, trainer_callbacks = self._prepare_trial_components(trial)
@@ -213,13 +260,20 @@ class OptunaLightningTuner:
         """
         Runs an Optuna study to optimize hyperparameters for the model.
 
-        Args:
-            n_trials: Number of trials to run.
-            study_name: Name of the Optuna study.
-            storage: URL for persistent storage.
-            sampler: One of ['grid', 'random', 'tpe'].
-            timeout: Maximum time in seconds for the study.
+        Parameters
+        ----------
+        n_trials : int
+            Number of trials to run.
+        study_name : str
+            Name of the Optuna study.
+        storage : str or None
+            URL for persistent storage.
+        sampler : {"grid", "random", "tpe"}
+            Sampler to use for the study.
+        timeout : int or None
+            Maximum time in seconds for the study.
         """
+
         sampler_obj: BaseSampler
         if study_name is None:
             study_name = self.config.study_name
@@ -245,24 +299,3 @@ class OptunaLightningTuner:
         self._save_to_json(study)
 
         return study
-
-    def predict(self, datamodule, study) -> list[np.ndarray]:
-        trial_num = study.best_trial.number
-        path_of_model = os.path.join(
-            self.config.model_dir, f"model_trial_{trial_num}.pt"
-        )
-        model = torch.jit.load(path_of_model)
-        model.eval()
-        logger.info(f"Loaded model from {path_of_model} for prediction")
-
-        datamodule.setup("predict")
-        loader = datamodule.predict_dataloader()
-
-        preds = []
-        with torch.no_grad():
-            for batch in loader:
-                x = batch[0] if isinstance(batch, tuple | list) else batch
-                out = model(x)
-                preds.append(out.cpu().numpy())
-        logger.info("Prediction completed")
-        return [p for b in preds for p in b]

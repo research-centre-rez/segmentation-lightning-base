@@ -1,8 +1,13 @@
+import logging
+import pathlib
+
 import numpy as np
 import torch
 
 import seglight.image_utils as iu
 from seglight.domain import Image
+
+logger = logging.getLogger(__name__)
 
 
 def infer(model, img: Image, device="cuda"):
@@ -78,3 +83,46 @@ def infer_oversized(
         tiles_pred.append(tile_pred)
 
     return iu.blend_tiles(tiles_pred, xy, img.shape)
+
+
+def predict_best_trial(datamodule, study, model_dir, threshold=0.5) -> list[np.ndarray]:
+    """
+    Predicts binary masks for all samples in a given datamodule
+    using the best trial model.
+
+    Parameters
+    ----------
+    datamodule : LightningDataModule
+        PyTorch Lightning datamodule containing a `predict_dataloader` method.
+    study : optuna.Study
+        Optuna study object from which the best trial number is retrieved.
+    model_dir : str or pathlib.Path
+        Directory where the saved model checkpoints are stored.
+    threshold : float, default=0.5
+        Threshold applied to model outputs to produce binary masks.
+
+    Returns
+    -------
+    List[np.ndarray]
+        List of binary masks for each sample in the datamodule. Each mask has shape
+        (H, W) or (1, H, W) depending on model classes.
+    """
+
+    trial_num = study.best_trial.number
+    path_of_model = pathlib.Path(model_dir) / f"model_trial_{trial_num}.pt"
+    model = torch.jit.load(path_of_model)
+    model.eval()
+    logger.info(f"Loaded model from {path_of_model} for prediction")
+
+    datamodule.setup("predict")
+    loader = datamodule.predict_dataloader()
+
+    preds = []
+    with torch.no_grad():
+        for batch in loader:
+            x = batch[0] if isinstance(batch, tuple | list) else batch
+            out = model(x)
+            binary_mask = (out >= threshold).float()
+            preds.append(binary_mask.cpu().numpy())
+    logger.info("Prediction completed")
+    return [p for b in preds for p in b]

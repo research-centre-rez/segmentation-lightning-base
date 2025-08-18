@@ -315,7 +315,9 @@ show(fig)
 This is a good place to add custom metrics if needed
 
 ```python
-predictions = tuner.predict(dm, study)
+from seglight.inference import predict_best_trial
+
+predictions = predict_best_trial(dm, study, model_dir)
 ```
 
 ```python editable=true slideshow={"slide_type": ""}
