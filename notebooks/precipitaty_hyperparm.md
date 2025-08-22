@@ -24,6 +24,23 @@ data_path = Path("data")
 model_dir = Path("output")
 ```
 
+```python
+import logging
+
+
+def setup_logging():
+    level = logging.INFO
+
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+    )
+
+
+setup_logging()
+
+```
+
 # Installing project specific dependencies
 
 These dependencies are not part of the library since it is used by derived applications only. User needs to install then separately.
@@ -315,9 +332,64 @@ show(fig)
 This is a good place to add custom metrics if needed
 
 ```python
-from seglight.inference import predict_best_trial
+import pathlib
 
-predictions = predict_best_trial(dm, study, model_dir)
+from seglight.inference import infer
+
+logger = logging.getLogger(__name__)
+
+
+def predict_best_trial(dm, study, model_dir, device, threshold=0.5) -> list[np.ndarray]:
+    """
+    Predicts binary masks for all samples in a given datamodule
+    using the best trial model.
+
+    Parameters
+    ----------
+    datamodule : LightningDataModule
+        PyTorch Lightning datamodule containing a `predict_dataloader` method.
+    study : optuna.Study
+        Optuna study object from which the best trial number is retrieved.
+    model_dir : str or pathlib.Path
+        Directory where the saved model checkpoints are stored.
+    device : str
+        Device on which to run inference (e.g., "cpu" or "cuda").
+    threshold : float, default=0.5
+        Threshold applied to model outputs to produce binary masks.
+
+    Returns
+    -------
+    List[np.ndarray]
+        List of binary masks for each sample in the datamodule. Each mask has shape
+        (H, W) or (1, H, W) depending on model classes.
+    """
+    trial_num = study.best_trial.number
+    path_of_model = pathlib.Path(model_dir) / f"model_trial_{trial_num}.pt"
+    model = torch.jit.load(path_of_model)
+    model.eval()
+    logger.info(f"Loaded model from {path_of_model} for prediction")
+
+    dm.setup("predict")
+    loader = dm.predict_dataloader()
+
+    preds = []
+    for batch in loader:
+        x = batch[0] if isinstance(batch, tuple | list) else batch
+        for img in x:
+            img_np = img.numpy()
+            if img_np.ndim == 3 and img_np.shape[0] in (1, 3):
+                img_np = np.moveaxis(
+                    img_np, 0, -1
+                )  # expected input for infer is (H, W, C)
+            pred = infer(model, img_np, device)
+            binary_mask = (pred >= threshold).astype(np.uint8)
+            preds.append(binary_mask)
+    logger.info("Prediction completed")
+    return preds
+
+
+predictions = predict_best_trial(dm, study, model_dir, device)
+
 ```
 
 ```python editable=true slideshow={"slide_type": ""}
