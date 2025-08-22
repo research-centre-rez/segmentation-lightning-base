@@ -366,7 +366,6 @@ def predict_best_trial(dm, study, model_dir, device, threshold=0.5) -> list[np.n
     trial_num = study.best_trial.number
     path_of_model = pathlib.Path(model_dir) / f"model_trial_{trial_num}.pt"
     model = torch.jit.load(path_of_model)
-    model.eval()
     logger.info(f"Loaded model from {path_of_model} for prediction")
 
     dm.setup("predict")
