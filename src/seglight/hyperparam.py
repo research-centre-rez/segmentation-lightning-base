@@ -1,13 +1,13 @@
 import json
+import os  
 import logging
-import os
 import pathlib
 from collections.abc import Callable
 from dataclasses import dataclass
 
 import lightning as L
 import optuna
-import torch
+import torch  
 from lightning.pytorch.callbacks import Callback, ModelCheckpoint
 from lightning.pytorch.core.module import LightningModule
 from optuna import Study
@@ -19,7 +19,7 @@ from seglight.data import TrainTestDataModule
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass  
 class TunerConfig:
     """
     Configuration for the hyperparameter tuning process.
