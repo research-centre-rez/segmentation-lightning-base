@@ -63,7 +63,7 @@ dependencies = [
 # referred to as "extras". For a more extensive definition see:
 # https://packaging.python.org/en/latest/specifications/dependency-specifiers/#extras
 [project.optional-dependencies]
-dev = ["check-manifest","pytest","jupytext"]
+dev = ["check-manifest","pytest","jupytext", "pre-commit"]
 test = ["coverage"]
 
 [project.urls]
