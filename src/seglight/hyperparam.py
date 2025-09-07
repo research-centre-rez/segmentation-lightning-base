@@ -231,19 +231,18 @@ class OptunaLightningTuner:
 
         trainer.fit(model, datamodule=self.datamodule)
 
-        metric_value = trainer.callback_metrics.get(self.config.monitor_metric)
-        if metric_value is None:
-            raise ValueError(
-                f"Metric '{self.config.monitor_metric}' not found in callback_metrics."
-            )
         checkpoint_callback = next(
             cb for cb in trainer_callbacks if isinstance(cb, ModelCheckpoint)
         )
+
+        best_metric_value = checkpoint_callback.best_model_score
+        if best_metric_value is None:
+            raise ValueError(f"No metric recorded for '{self.config.monitor_metric}.")
         best_model = self._load_best_model(checkpoint_callback, model)
 
         self._save_to_pt(trial, best_model)
         if self.config.eval_metrics is None:
-            value_for_optuna = metric_value.item()
+            value_for_optuna = best_metric_value.item()
         else:
             value_for_optuna = self._evaluate_metric(best_model)
 
