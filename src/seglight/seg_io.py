@@ -12,8 +12,9 @@ logger = logging.getLogger("seglight.io")
 
 def imread_as_float(
     image_path: os.PathLike,
+    keep_channels=False,
 ) -> Image:
-    image = imageio.imread(image_path)
+    image = imread_raw(image_path)
     match image.shape:
         case (_, _):
             image = image.astype(np.float32)
@@ -23,15 +24,15 @@ def imread_as_float(
             # gray scale with alpha
             image = image[:, :, 0].astype(np.float32)
         case _:
-            image = rgb2gray(image)
+            if not keep_channels:
+                image = iu.rgb2gray(image)
 
     image = iu.normalize_image(image)
     return image.astype(np.float32)
 
 
-def rgb2gray(rgb):
-    # Values taken from XYZ
-    return np.dot(rgb[:, :, :3], [0.2989, 0.5870, 0.1140])
+def imread_raw(image_path: os.PathLike):
+    return imageio.imread(image_path)
 
 
 def imwrite_1ch(
