@@ -397,7 +397,7 @@ def read_camvid_pairs(path: os.PathLike) -> list[tuple[os.PathLike, os.PathLike]
         A list of (image_path, label_path) pairs with leading slashes removed.
     """
     with open(path) as f:
-        sep = " /"  # additinal stripping of '/' to make paths relative
+        sep = " "  # additinal stripping of '/' to make paths relative
         parts = (line.strip().split(sep) for line in f.readlines())
         return [[Path(pp.lstrip("/")) for pp in p] for p in parts if len(p) == 2]
 
