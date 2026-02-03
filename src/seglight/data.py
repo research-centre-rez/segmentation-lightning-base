@@ -98,7 +98,12 @@ class CamVidDSFormat:
 
 class CVRFolderedDSFormat:
     def __init__(
-        self, data_path: os.PathLike, test_txt_path: str | None = None, no_test=False
+        self, 
+        data_path: os.PathLike, 
+        test_txt_path: str | None = None, 
+        no_test=False,
+        respect_rgb=False,
+        test_file_name = 'test.txt',
     ):
         """
         A dataset format handler for CVR-style foldered datasets.
@@ -120,12 +125,12 @@ class CVRFolderedDSFormat:
             `self.test_txt_path` to None. If False and `test_txt_path` is None,
             the default path is used.
         """
-        self.data_path = data_path
+        self.data_path = Path(data_path)
 
         if no_test:
             self.test_txt_path = None
         elif test_txt_path is None:
-            self.test_txt_path = Path(data_path) / "test.txt"
+            self.test_txt_path = self.data_path / test_file_name
         else:
             self.test_txt_path = Path(test_txt_path)
 
@@ -171,7 +176,7 @@ class CVRFolderedDSFormat:
             data[key] = {
                 p.stem: sio.imread_as_float(p)
                 for p in dir_path.glob("*")
-                if not p.is_dir()
+                if not p.is_dir() and p.suffix in ['.jpg','.png']
             }
         return data
 
@@ -396,7 +401,7 @@ def read_camvid_pairs(path: os.PathLike) -> list[tuple[os.PathLike, os.PathLike]
         A list of (image_path, label_path) pairs with leading slashes removed.
     """
     with open(path) as f:
-        sep = " /"  # additinal stripping of '/' to make paths relative
+        sep = " "  # additinal stripping of '/' to make paths relative
         parts = (line.strip().split(sep) for line in f.readlines())
         return [[Path(pp.lstrip("/")) for pp in p] for p in parts if len(p) == 2]
 

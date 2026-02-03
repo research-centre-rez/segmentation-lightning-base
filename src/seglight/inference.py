@@ -27,7 +27,11 @@ def infer(model, img: Image, device="cuda"):
         model classes.
     """
     img = img[None] if len(img.shape) == 2 else np.rollaxis(img, -1)
-    model = model.to(device)
+    
+    d = next(model.parameters()).device
+    if device_name_to_param('cuda') !=  (d.type,str(d.index)):
+        model = model.to(device)
+        
     img_t = torch.Tensor(img[None]).to(device)
     model.eval()
     with torch.no_grad():
@@ -80,3 +84,13 @@ def infer_oversized(
         tiles_pred.append(tile_pred)
 
     return iu.blend_tiles(tiles_pred, xy, img.shape)
+
+
+def device_name_to_param(dev):
+    parts = dev.split(':')
+    if len(parts) == 1:
+        return parts[0],"0"
+    elif len(parts) == 2:
+        return parts
+    else:
+        return parts[:2]
