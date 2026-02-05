@@ -1,3 +1,4 @@
+import itertools
 import os
 import shutil
 import tempfile
@@ -404,6 +405,124 @@ def read_camvid_pairs(path: os.PathLike) -> list[tuple[os.PathLike, os.PathLike]
         sep = " "  # additinal stripping of '/' to make paths relative
         parts = (line.strip().split(sep) for line in f.readlines())
         return [[Path(pp.lstrip("/")) for pp in p] for p in parts if len(p) == 2]
+
+
+def create_pairs_paths(
+    sample_names,
+    image_destination="default",
+    annotation_destination="defaultannot",
+    file_ext=".png",
+):
+    dataset_structure = {}
+    for sample_name in sample_names:
+        dataset_structure[sample_name] = {
+            "image_path": f"/{image_destination}/{sample_name}{file_ext}",
+            "annotation_path": f"{annotation_destination}/{sample_name}{file_ext}",
+        }
+    return dataset_structure
+
+
+def structure_dataset_text(dataset_structure):
+    lines = [
+        f"{v['image_path']} {v['annotation_path']}\n"
+        for v in dataset_structure.values()
+    ]
+    return "".join(lines)
+
+
+def _merge_rgb_masks(rgb_masks):
+    base = np.zeros_like(rgb_masks[0], dtype=int)
+
+    for rgb_mask in rgb_masks:
+        bin_mask = np.sum(rgb_mask, axis=2) > 0
+        base[bin_mask] = rgb_mask[bin_mask]
+    return base
+
+
+def color_masks(label_color_mapping, img_dict):
+    masks = []
+    for label_name, rgb_color in label_color_mapping.items():
+        binary_mask = img_dict[label_name]
+        rgb = np.expand_dims(binary_mask, axis=2) * np.array(rgb_color)
+        masks.append(rgb)
+    return masks
+
+
+def collect_camvid_pairs(data_dict, label_color_mapping, img_key):
+    rgb_masks = {}
+    imgs = {}
+    for k, img_dict in data_dict.items():
+        masks = color_masks(label_color_mapping, img_dict)
+        rgb_masks[k] = _merge_rgb_masks(masks)
+        imgs[k] = np.uint8(np.dstack([img_dict[img_key] * 255] * 3))
+    return imgs, rgb_masks
+
+
+def dump_images(
+    dataset_destination,
+    camvid_imgs,
+    camvid_masks,
+    image_destination="default",
+    annotation_destination="defaultannot",
+    file_ext=".png",
+):
+    img_dir = dataset_destination / image_destination
+    img_dir.mkdir(exist_ok=True, parents=True)
+
+    mask_dir = dataset_destination / annotation_destination
+    mask_dir.mkdir(exist_ok=True, parents=True)
+
+    for k in camvid_imgs:
+        img = camvid_imgs[k]
+        mask = camvid_masks[k]
+
+        sio.imwrite_3ch(img_dir / f"{k}{file_ext}", img)
+        sio.imwrite_3ch(mask_dir / f"{k}{file_ext}", mask)
+
+
+def create_label_color_content(label_color_mapping) -> str:
+    rows = []
+    for label_name, color in label_color_mapping.items():
+        row = f"{color[0]} {color[1]} {color[2]} {label_name}\n"
+        rows.append(row)
+    return "".join(rows)
+
+
+def dump_label_colors(
+    dataset_destination, label_color_mapping, filename="label_colors.txt"
+):
+    label_colors = create_label_color_content(label_color_mapping)
+    with open(dataset_destination / filename, "w") as f:
+        f.write(label_colors)
+
+
+def dump_dataset_mapping(
+    dataset_destination, sample_paths, image_destination="default"
+):
+    dataset_mapping = structure_dataset_text(sample_paths)
+    with open(dataset_destination / f"{image_destination}.txt", "w") as f:
+        f.write(dataset_mapping)
+
+
+def camvid_from_cvr(
+    dataset_destination,
+    cvr_dataset,
+    label_color_mapping,
+    img_key="img",
+    file_ext=".png",
+):
+    train_data = cvr_dataset.load_train()
+    test_data = cvr_dataset.load_test()
+    data_dict = dict(itertools.chain(train_data.items(), test_data.items()))
+    sample_paths = create_pairs_paths(data_dict.keys())
+
+    camvid_imgs, camvid_masks = collect_camvid_pairs(
+        data_dict, label_color_mapping, img_key
+    )
+    dump_images(dataset_destination, camvid_imgs, camvid_masks, file_ext=file_ext)
+
+    dump_dataset_mapping(dataset_destination, sample_paths)
+    dump_label_colors(dataset_destination, label_color_mapping)
 
 
 def _read_label_map(label_path):
