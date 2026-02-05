@@ -26,6 +26,11 @@ This repository is intended as a library. See [precipitates notebook](/notebooks
 Notebook:
 See example in `notebooks` folder. (Note that you need to convert `.md` to `.ipynb` using `jupytext --to ipynb <notebook>`)
 
+## Development
+
+This repository uses [pre-commit](https://pre-commit.com/) hooks for code quality and a GitHub Actions workflow for linting (`.github/workflows/lint.yaml`).  
+
+
 ## License
 
 This project is proprietary and confidential. All rights reserved.
