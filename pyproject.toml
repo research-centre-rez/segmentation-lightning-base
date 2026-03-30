@@ -65,8 +65,6 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["check-manifest","pytest","jupytext"]
 test = ["coverage"]
-
-[project.optional-dependencies]
 torch = ["torch"]
 
 [project.urls]
