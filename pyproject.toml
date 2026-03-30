@@ -45,6 +45,8 @@ classifiers = [
 
 dependencies = [
   "tqdm",
+  "torch", 
+  "lightning==2.3.3",
   "albumentations",
   "imageio",
   "numpy",
@@ -64,8 +66,6 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["check-manifest","pytest","jupytext"]
 test = ["coverage"]
- # see https://github.com/Lightning-AI/pytorch-lightning/issues/19398
-torch = ["torch" , "lightning==2.3.3"]
 
 [project.urls]
 "Homepage" = "https://github.com/research-centre-rez/segmentation-lightning-base"
