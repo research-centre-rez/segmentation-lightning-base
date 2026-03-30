@@ -46,7 +46,7 @@ def blend_tiles(tiles, xy, image_shape) -> Image:
         weight[y : y + hh, x : x + ww] += 1
 
     result /= np.maximum(weight, 1)
-    return result.squeeze()
+    return result
 
 
 def normalize_image(image: Image) -> Image:

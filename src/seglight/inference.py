@@ -33,8 +33,9 @@ def infer(model, img: Image, device="cuda"):
     img_t = torch.Tensor(img[None]).to(device)
     model.eval()
     with torch.no_grad():
-        pred = model(img_t)
-    pred = np.squeeze(pred.detach().cpu().numpy())
+        pred = model(img_t)[0]
+        
+    pred = pred.detach().cpu().numpy()
 
     if len(pred.shape) == 2:
         return pred

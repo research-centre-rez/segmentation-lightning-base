@@ -3,6 +3,7 @@ import os
 
 import imageio
 import numpy as np
+import pyvips
 
 import seglight.image_utils as iu
 from seglight.domain import Image
@@ -49,3 +50,16 @@ def imwrite_3ch(
     img_uint8_three_channel: Image,
 ):
     imageio.imwrite(image_path, img_uint8_three_channel)
+
+
+def imwrite_1ch_as_tiff(path,arr):
+    arr = np.ascontiguousarray(arr)
+    img = pyvips.Image.new_from_array(arr)  # dtype/bands inferred
+    img.tiffsave(
+        str(path.absolute()), 
+        tile=True, 
+        tile_width=512, 
+        tile_height=512, 
+        compression="lzw", 
+        bigtiff=True
+    )

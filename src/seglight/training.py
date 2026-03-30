@@ -9,47 +9,6 @@ from torch.nn import BCELoss, Module
 import seglight.image_utils as iu
 
 
-class SemsegLightningModule(L.LightningModule):
-    def __init__(self, model, loss_fn, learning_rate=0.001):
-        super().__init__()
-        self.model = model
-        self.loss_fn = loss_fn
-        self.lr = learning_rate
-
-    def _step(self, batch):
-        images, targets = batch
-        outputs = self.model(images)
-        return self.loss_fn(outputs, targets)
-
-    def forward(self, inputs):
-        return self.model(inputs)
-
-    def training_step(self, batch):
-        loss = self._step(batch)
-        self.log("train_loss", loss)
-        return loss
-
-    def validation_step(self, batch):
-        loss = self._step(batch)
-        self.log("val_loss", loss, prog_bar=True)
-        return loss
-
-    def test_step(self, batch):
-        loss = self._step(batch)
-        self.log("test_loss", loss)
-
-    def predict_step(self, batch):
-        imgs, _ = batch
-        # fixed as long as images have sensible dimensions
-        pad_stride = 32
-
-        padded, pads = iu.pad_to(imgs, pad_stride)
-        res_tensor = self.model(padded)
-        return iu.unpad(res_tensor, pads)
-
-    def configure_optimizers(self):
-        return torch.optim.Adam(self.model.parameters(), lr=self.lr)
-
 
 def resolve_loss(loss_name, **kwargs):
     match loss_name:

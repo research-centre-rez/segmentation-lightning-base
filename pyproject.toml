@@ -44,13 +44,13 @@ classifiers = [
 ]
 
 dependencies = [
-  "torch",
   "lightning==2.3.3", # see bug https://github.com/Lightning-AI/pytorch-lightning/issues/19398
   "tqdm",
   "albumentations",
   "imageio",
   "numpy",
   "scikit-learn",
+  "pyvips"
 ]
 
 # List additional groups of dependencies here (e.g. development
@@ -65,6 +65,9 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["check-manifest","pytest","jupytext"]
 test = ["coverage"]
+
+[project.optional-dependencies]
+torch = ["torch"]
 
 [project.urls]
 "Homepage" = "https://github.com/research-centre-rez/segmentation-lightning-base"
